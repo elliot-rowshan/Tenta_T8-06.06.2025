@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LPG008 – Interaktiv tentamen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f7; color: #1d1d1f; min-height: 100vh; }
+  
+  header { background: #1d1d1f; color: #fff; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  #progress-bar-wrap { width: 200px; height: 6px; background: #444; border-radius: 3px; overflow: hidden; }
+  #progress-bar { height: 100%; width: 0%; background: #34c759; transition: width 0.3s; }
+  #score-display { font-size: 14px; color: #aaa; }
+  
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 80px; }
+  
+  .question-card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .q-header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+  .q-num { background: #1d1d1f; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .q-text { font-size: 15px; line-height: 1.6; }
+  
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .option { border: 1.5px solid #e0e0e5; border-radius: 8px; padding: 12px 16px; cursor: pointer; font-size: 14px; line-height: 1.5; transition: all 0.15s; background: #fff; text-align: left; width: 100%; }
+  .option:hover:not(.answered) { border-color: #0071e3; background: #f0f6ff; }
+  .option.correct { border-color: #34c759; background: #edfff3; color: #1a6b30; font-weight: 500; }
+  .option.wrong { border-color: #ff3b30; background: #fff0ef; color: #a0170f; text-decoration: line-through; }
+  .option.answered { cursor: default; }
+  
+  #results-panel { display: none; background: #fff; border-radius: 16px; padding: 40px 32px; text-align: center; margin-top: 32px; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+  #results-panel h2 { font-size: 28px; margin-bottom: 8px; }
+  #final-score { font-size: 64px; font-weight: 700; color: #0071e3; margin: 20px 0; }
+  #result-detail { font-size: 15px; color: #666; margin-bottom: 24px; }
+  #wrong-list { text-align: left; max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  #wrong-list h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #ff3b30; }
+  #wrong-list p { font-size: 13px; color: #444; margin-bottom: 6px; }
+  
+  #finish-btn { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0071e3; color: #fff; border: none; border-radius: 980px; padding: 16px 40px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 20px rgba(0,113,227,.4); transition: background 0.2s; }
+  #finish-btn:hover { background: #0077ed; }
+  
+  .answered-icon { float: right; margin-left: 8px; }
+  .q-image { margin: 16px 0 24px 0; max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LPG008 – Tentamen</h1>
+  <div id="score-display">0 / 120</div>
+  <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+</header>
+
+<main>
+  <div id="questions-container"></div>
+  <div id="results-panel">
+    <h2>Tentamen avslutad!</h2>
+    <div id="final-score"></div>
+    <div id="result-detail"></div>
+    <div id="wrong-list"></div>
+  </div>
+</main>
+
+<button id="finish-btn" onclick="showResults()">Visa resultat</button>
+
+<script>
+const questions = [
+  {num:1,
+  text:"En 72-årig man söker vård på grund av skav, irritation och rinnande från höger öga.",
+  image:"images/ENTROPION.jpg",
+  options:["Ektropion", "Konjunktivit", "Blefarit", "Entropion"],
+  correct:4},
+  {num:2, 
+  text:"En 52-årig kvinna söker vård på grund av nytillkommen ptos på vänster öga efter att nyligen ha genomgått en tyreoidektomi. Hon noterar att ögonlocket känns 'trött'. Vad är din diagnos?",
+  image: "images/HORNERS.jpg",
+  options:["Åldersrelaterad ptos", "Oculomotoriuspares", "Horners syndrom", "Myasthenia gravis"],
+  correct:3},
+  {num:3,
+  text:"En 55-årig kvinna söker vård på grund av skav och värk i sina ögon. Se bild nedan. Vad blir ditt nästa steg på vårdcentralen?",
+  image:"images/TYREOIDEA.jpg",
+  options:["Ta tyreoidea status", "Acetylkolinreceptorantikroppar", "Beställa MR hjärna", "Ta SR/CRP"],
+  correct:1},
+  {num:4,
+  image:"images/OCULOMOTORIUS.jpg",
+  text:"En 71-årig kvinna med hypertoni och diabetes söker vård på grund av diplopi. Vid undersökning noteras följande, se nedanstående bilder. Vad är din diagnos?",
+  options:["Abducenspares", "Tyreoideaassocierad oftalmopati (TAO)", "Trochlearispares", "Oculomotoriuspares"],
+  correct:4},
+  {num:5,
+  image: "images/TRIKIASIS.jpg", 
+  text:"En 35-årig man söker vård på grund av skav och irritation i ena ögat. Vid undersökning noteras fynden som du ser på bilden nedan. Vad är din diagnos?",
+  options:["Trikiasis", "Främmande kropp", "Katarakt", "Keratit"], 
+  correct:1},
+  {num:6,
+  image: "images/EVERTERA.jpg",
+  text:"En 32-årig kvinna som har varit ute och promenerat i skogen söker dig på vårdcentral på grund av skav och irritation i ögat. Vid undersökning noteras fynden på bilden nedan. Vad blir ditt nästa steg?", options:["Remiss till ögonläkare på grund av misstänkt bulbpenetration", "Smörjande ögondroppar", "Evertera övre ögonlocket", "Konjunktival odling"], correct:3},
+  {num:7,
+  image: "images/TERRACORTRIL.jpg", 
+  text:"En 45-årig kvinna med kronisk blefarit söker vård på grund av värk och rodnad i vänster öga. Vid undersökning noteras fynden på bilden nedan. Vad blir din behandling?", options:["Terracortril med Polymyxin B x3 i 1 vecka, därefter x1 i 1 vecka.", "Oftaquix (Levofloxacin) ögondroppar x8 i 2 dagar, därefter x5 i 2 veckor.", "Kloramfenikolsalva x5 i 1 vecka.", "Smörjande ögondroppar och ögonlockshygien."], correct:1},
+  {num:8,
+  image: "images/PTERYGIUM.jpg",
+  text:"Din kollega på vårdcentralen knackar på dörren och vill fråga dig om ett fynd som hon har noterat på sin patient, eftersom hon vet att du har studerat hårt under ögonkursen. Vid undersökning ser du fynden på bilden nedan. Vad är din diagnos?", options:["Pinguecula", "Pterygium", "Ärrbildning efter trauma", "Konjunktivalt melanom"], correct:2},
+  {num:9,
+  image: "images/KONTAKTLINSER.jpg",
+  text:"Vad är den största riskfaktorn för tillståndet du ser på bilden?", options:["Smitta i omgivningen", "Trauma", "HLA-B27 positivitet", "Kontaktlinser"], correct:4},
+  {num:10,
+  image:"images/PDRP.jpg",
+  text:"Vad kan det vara för indikation för följande behandling?", options:["Bakre uveit", "Trauma", "Proliferativ diabetesretinopati", "Hypertensiv retinopati"], correct:3},
+  {num:11,
+  image: "images/GLAUKOM.jpg", 
+  text:"Följande utseende på synnerven tillsammans med medföljande synfält talar för vilket tillstånd?", options:["Glaukom", "Optikusneurit", "Papillödem", "AION"], correct:1},
+  {num:12,
+  image: "images/HYPERTONI.jpg", 
+  text:"En 67-årig man söker vård på grund av synnedsättning i höger öga. Vid undersökning noteras fynden på bilden nedan. En viktig riskfaktor för detta tillstånd är:", options:["Ärftlighet", "Hypertoni", "Kortisonbehandling", "Myopi"], correct:2},
+  {num:13,
+  image: "images/LASER.jpg",   
+  text:"En 92-årig patient med CRVO har nyligen genomgått scatterlaserbehandling i vänster öga p.g.a. irisrubeos. Vid uppföljande undersökning noteras en central ärrbildning i makula på bilden nedan. Vilket är den mest sannolika orsaken till patientens nuvarande tillstånd?", options:["Åldersrelaterad makuladegeneration", "Felaktig applicering av laserbehandlingen", "Progression av CRVO", "Optikusneurit"], correct:2},
+  {num:14,
+  image: "images/MR.jpg", 
+  text:"En 35-årig kvinna söker vård på grund av huvudvärk, tinnitus och dimsyn. Vid undersökning noteras fynden på bilderna nedan. Vad är ditt nästa steg?", options:["OCT-makula", "SR/CRP", "MR hjärna", "Sarkoidosprofil"], correct:3},
+  {num:15,
+  image: "images/LASER.jpg", 
+  text:"En 58-årig kvinna med myopi (-8 dioptrier) har sedan fyra dagar tillbaka noterat blixtrar och rörliga grumlingar i höger öga. Sedan i morse är synen kraftigt nedsatt. Vid undersökning noteras fynden på bilden nedan. Hur behandlar man tillståndet du ser på bilden?", options:["Exspektans", "Peroralt kortison", "Laser", "Kirurgi"], correct:4},
+  {num:16,
+  text:"Vilken mekanism är viktigast i patogenesen bakom diabetiskt makulaödem (DME)?", options:["Ökad permeabilitet i retinala blodkärl p.g.a. VEGF.", "Proliferation av blodkärl vid fovea.", "Ökat intraokulärt tryck.", "Degeneration av fotoreceptorer och RPE."], correct:1},
+  {num:17,  
+  text:"Var i retina uppstår grenvenocklusion (BRVO) oftast?", options:["Makulärt centrum", "Övre temporala kvadranten", "Inferotemporalt", "Nasalt om synnerven"], correct:2},
+  {num:18, text:"En 25-årig man, tidigare frisk och utan medicinering, skadade höger öga när han sprang i skogen och fick en kvist i ögat. Han söker vård på grund av kraftig värk, rodnad, ljuskänslighet och blefarospasm. För att kunna genomföra en undersökning behöver ögat bedövas. Vilket läkemedel använder du i detta fall?", options:["Atropin", "Tetrakain", "Fenylefrin", "Tropikamid"], correct:2},
+  {num:19, text:"En 30-årig man söker för rött vänster öga, dimsyn, värk och ljuskänslighet. Vid undersökning noteras ciliär injektion, små keratiska precipitat på endotelet, ljusväg +1 och celler +2. Bakre synekier ses mellan klockan 4 och 7. Hur behandlar du detta tillstånd?", options:["Kortisondroppar i nedtrappningsschema över sex veckor, börjar med 1 droppe varje vaken", "timme + pupillvidgande (t.ex. atropin) 1x2 i fem dagar.", "Oftaquix (levofloxacin) ögondroppar 1x8 i två dagar därefter 1x5 i två veckor.", "Kloramfenikolsalva 1x5 i en vecka.", "NSAID per oralt, exempelvis Naproxen 500 mg 1x2 i en vecka."], correct:1},
+  {num:20, text:"En 75-årig kvinna söker för plötslig synnedsättning i höger öga. Hon berättar att hon de senaste veckorna haft trötthet, subfebrilitet, värk vid höger tinning och käkclaudicatio efter måltider. Vid undersökning ses en svullen och blek synnerv i höger öga. Du misstänker AION relaterad till temporalisarterit. Vilken behandling rekommenderas i detta fall?", options:["Akut behandling med intravenös metylprednisolon.", "Intravitreala injektioner med Aflibercept om en vecka.", "ASA 1x1 tills vidare.", "Vänta på biopsi innan behandling."], correct:1},
+  {num:21, text:"En 4-årig pojke söker vård för att det gör ont och känns konstigt i vänster öra. Föräldrarna har också lagt märke till att han ser lite skev ut i ansiktet. Vid undersökning ser du en buktande, rodnad trumhinna. Akut mediaotit kan i sällsynta fall leda till facialispares på grund av inflammation och tryck på ansiktsnerven. Vilken behandling är mest lämplig?", options:["Smärtlindring och perorala steroider.", "Rör i trumhinnan.", "Perorala steroider.", "Paracentes och intravenösa antibiotika.", "Örondroppar som innehåller både kortison och antibiotika."], correct:4},
+  {num:22, text:"Du arbetar som allmänläkare och har ansvar för ett äldreboende. Du blir kontaktad av den ansvariga sjuksköterskan som berättar att en äldre man med diabetes i flera veckor klagat över smärta i höger öra. Det senaste dagarna har det blivit allt värre. Det rinner något grönaktigt ur örat. Vid undersökning ser du att hörselgången är väldigt svullen och ilsket rodnad. Malign extern otit är en potentiellt livshotande sjukdom. Vilken bakterie är den vanligaste vid malign extern otit?", options:["Proteus mirabilis", "Streptococcus pneumoniae", "Pseudomonas aeruginosa", "Haemophilus influensae", "Staphylococcus aureus"], correct:3},
+  {num:23, text:"En 40-årig kvinna söker på vårdcentralen på grund av långvarig nästäppa, snuva och återkommande tryck över panna och kinder. Hon har däremot inte märkt av att luktsinnet påverkats. Hon förnekar både allergiska symtom och astma. När du undersöker du henne ser du tydliga näspolyper på båda sidor. Vilken initial handläggning är mest lämplig?", options:["Nässköljningar, nasal steroid och peroralt antihistamin.", "Nässköljningar, nasal steroid, luftrörsvidgande β-2-stimulerare och peroralt antihistamin.", "Nässköljningar, nasal steroid och makrolidantibiotika i två veckor.", "Nässköljningar, nasal steroid och remiss till ÖNH för ställningstagande till kirurgi.", "Nässköljningar och nasal steroid."], correct:5},
+  {num:24, text:"Du arbetar på en vårdcentral. En 25-årig kvinna söker för näsblödningar och skorpbildning i näsan. Vid undersökning noterar du en liten septumperforation i nässeptums främre del. Slemhinnorna i näsans övriga delar ser fina ut. Hon är helt frisk i övrigt och har inga andra symtom från näsan. Patienten undrar vad som kan göras. Hon har inte vetat om att hon har en perforation. Vilket råd/handläggningsalternativ tycker du är bäst att börja med?", options:["Remiss till ÖNH för ställningstagande till operativ slutning av perforationen.", "Recept på nasal steroid.", "Undvik helt näspetning, prova näsolja och nässköljningar.", "Remiss till ÖNH för ställningstagande till silikonprotes (obturator).", "Undvik helt näspetning, recept på nasal steroid (OBS rätt sprayteknik), näsolja och", "nässköljningar."], correct:3},
+  {num:25, text:"En 65-årig man söker vård för korta episoder av rotatorisk yrsel som utlöses av att han vänder sig i sängen eller böjer sig framåt. Yrseln varar endast några sekunder och åtföljs av kort illamående men inte av hörselnedsättning. Du misstänker Benign Paroxysmal Positionell Vertigo (BPPV) som är en av de vanligaste orsakerna till lägesutlöst yrsel. Vilka tester kan du utföra på vårdcentralen för att diagnosticera BPPV?", options:["Dix-Hallpikes test och vestibulonystagmografi (kalorisk spolning).", "Dix-Hallpikes test och Epleys test.", "Head Impulse Test, nystagmusundersökning och Test of Skew.", "Dix-Hallpikes test och Head Impulse Test.", "Dix-Hallpikes test och Sidolägestest."], correct:5},
+  {num:26, text:"En 42-årig påtagligt överviktig man söker för dagtrötthet, koncentrationssvårigheter och högljudd snarkning. Han nickade nyligen till vid ratten. Hans partner berättar att han ofta slutar andas under sömnen och att han ibland vaknar andfådd. En nattlig andningsregistrering bekräftar frekventa andningsuppehåll under sömn. Vid undersökning tycker du att mannen ser trång ut i bakre svalget. Obstruktiv sömnapné är ett tillstånd som är kopplat till hälsorisker, inklusive högt blodtryck och hjärt-kärlsjukdomar. Vilken initial behandling är mest lämplig vid uttalad obstruktiv sömnapné? Välj det bästa alternativet för den aktuella patienten.", options:["Remiss för överviktskirurgi.", "Uvulopalatopharyngoplastik (svalgkirurgi).", "Positionsträning för att undvika ryggläge under sömn.", "Apnéskena.", "CPAP (Continuous Positive Airway Pressure)."], correct:5},
+  {num:27, text:"En 4-årig pojke söker vård med sina föräldrar då han i flera år lidit av högljudd snarkning, andningsuppehåll under sömnen och dagtrötthet. Han är i övrigt frisk och har inte haft några problem med tonsilliter. Vid undersökningen noterar du att han har förstorade tonsiller. Han andas med öppen mun och du misstänker att han även har en förstorad adenoid. Båda föräldrarna opererade sina halsmandlar som barn och minns att det gjorde ont och pappans kusin höll på att blöda ihjäl efter halsmandeloperation. Vilket påståenden om halsmandeloperationer på snarkande barn med tonsillhypertrofi är korrekt?", options:["Tonsillotomi är förknippat med lägre risk för blödning, mindre smärta och mindre risk för framtida pneumonier än tonsillektomi.", "Tonsillektomi är förknippat med klart bättre resultat på snarkningssymtomen, men mer smärta och högre blödningsrisk än tonsillotomi.", "Tonsillektomi och tonsillotomi är i alla avseenden likvärdiga.", "Tonsillektomi är förknippat med klart bättre resultat på snarkningssymtomen, men mer smärta och lägre blödningsrisk än tonsillotomi.", "Tonsillotomi är förknippat med lägre risk för blödning, mindre smärta men högre risk för symtomgivande återväxt av tonsillvävnad än tonsillektomi."], correct:5},
+  {num:28, text:"Ett barn föds med bilateral dövhet. Efter en grundlig utredning beslutas det om kokleaimplantat. Föräldrarna har många frågor. Välj det bästa svaret för att beskriva hur kokleaimplantat fungerar.", options:["Förstärkning av ljudvibrationer till koklean.", "Direkt stimulering av auditoriska cortex.", "Förstärkning av vibrationer i trumhinnan som fortplantas till koklean.", "Direkt stimulering av hörselcentra i hjärnstammen.", "Direkt stimulering av nervceller i koklean."], correct:5},
+  {num:29, text:"En 34-årig kvinna söker för gradvis hörselnedsättning på båda öronen. Audiometri visar konduktiv bilateral hörselnedsättning med så kallad Carharts’ notch. Stapediusreflexmätning indikerar att stapes inte rör sig. Vilken är den troligaste diagnosen?", options:["Laesio auris interna", "Tuba aperta", "Facialispares", "Hörselbensluxation", "Otoskleros"], correct:5},
+  {num:30, text:"En 50-årig man från Sydostasien söker vård för långdragen nästäppa, blodig sekretion från näsan och ensidig hörselnedsättning. Han beskriver också en smärtfri knöl på halsen som har funnits i flera veckor. Vid undersökning finner du en ensidig sekretorisk mediaotit. Vilken diagnos misstänker du och vilket virus är förknippat med diagnosen?", options:["Bihålecancer och Herpes simplexvirus (HSV)", "Tonsillcancer och Humant papillomvirus (HPV)", "Epifarynxcancer och Epstein-Barrvirus (EBV)", "Hypofystumör och flavivirus", "Tungbascancer och Humant immunbristvirus (HIV)"], correct:3},
+  {num:31, text:"En 65-årig man, storrökare, söker vård för långvarig heshet som gradvis har förvärrats över månader. Han klagar också över klumpkänsla i halsen och smärta vid sväljning. Vid endoskopi ses en tumörmisstänkt exofytisk lesion på vänstra stämbandet. Larynxcancer är starkt kopplad till tobaksanvändning och tidig diagnos är avgörande för att förbättra prognosen. Vilken är den mest lämpliga åtgärden för att bekräfta diagnosen?", options:["CT hals-thorax med kontrast", "PET-undersökning för att leta efter metastaser", "Stroboskopisk undersökning av stämbanden", "Esofagoskopi med biopsi", "Mikrolaryngoskopi med biopsi"], correct:5},
+  {num:32, text:"En 32-årig man söker akuten efter att ha blivit slagen i ansiktet med ett hårt föremål. Han klagar över smärta runt vänster öga och dubbelseende. Vid undersökning noteras periorbital ekkymos, begränsad ögonrörelse uppåt och nedsatt känsel i området under ögat. CT undersökning visar en orbitagolvsfraktur. Vilken nerv är troligen skadad?", options:["n. oculomotorius", "n. auricularis magnus", "n. nasolabialis", "n. infraorbitalis", "n. facialis"], correct:4},
+  {num:33, text:"En 29-årig kvinna söker på vårdcentralen efter en bilolycka där hon fick ett trubbigt trauma mot ansiktet. Hon klagar över smärta, svårigheter att gapa och hon tycker att bettet känns konstigt. Vilken enkel undersökning bör du i första hand göra om du misstänker en Le Fort fraktur?", options:["Palpera munbotten bimanuellt.", "Undersöka ögonmotoriken.", "Palpera käkledshuvudena på båda sidor.", "Palpera hårda gommen.", "Undersöka om maxillan är ruckbar."], correct:5},
+  {num:34, text:"En 4-årig pojke söker på ÖNH-kliniken för långvarig nästäppa, munandning och snarkning. Föräldrarna märker också att han ofta verkar trött under dagen och han äter dåligt. Sedan länge har föräldrarna noterat andningsuppehåll under sömn. Vid undersökning ser du normalstora tonsiller. Du misstänker adenoidhypertrofi som orsak till besvären. Hur gör du för att komma vidare i handläggningen? Ange det mest lämpliga alternativet.", options:["Endoskopi av epifarynx efter slemhinnebedövning och avsvällning av nässlemhinnan.", "Ordinerar nasala steroider och peroralt antihistamin med uppföljning via telefon.", "Ordinerar peroral steroid (kort kur) med återbesök efter tre månader.", "Sätter upp pojken för adenoidektomi eftersom det föreligger en uppenbar op-indikation.", "Sätter upp pojken för inspektion av epifarynx i narkos."], correct:1},
+  {num:35, text:"En 22-årig kvinna söker akuten med feber och ensidig smärta i svalget. Hon har svårt att svälja och öppna munnen. Hon har varken kunnat äta eller dricka på två dygn. Vid undersökning noteras asymmetri där den ena tonsillen och dess omgivning är rodnad och svullen. Vilken diagnos är mest sannolik och vilken åtgärd är mest lämplig (utöver intravenös antibiotikabehandling som du redan bestämt dig för)?", options:["Diagnos: Lemierres syndrom – Åtgärd: intravenös steroidbehandling.", "Diagnos: halsböld - Åtgärd: dränering av abscessen i lokalbedövning.", "Diagnos: Vincents angina - Åtgärd: akut tonsillektomi.", "Diagnos: monukleos – Åtgärd: perorala steroider.", "Diagnos: recidierande streptokocktonsillit – Åtgärd: ingen utöver iv antibiotika."], correct:2},
+  {num:36, text:"En 70-årig kvinna som nyligen drabbats av stroke rapporterar svårigheter att svälja vätskor och hostar ofta under måltider. Hon har också haft en episod av pneumoni. Orofaryngeal dysfagi är vanligt efter stroke och kräver en strukturerad rehabiliteringsplan. Vilken initial åtgärd är mest lämplig för att minska aspirationsrisken?", options:["Konsistensanpassning av kosten och logopedisk behandling.", "PEG (perkutan endoskopisk gastrostomi).", "Endast fast föda som erbjuder ordentligt tuggmotstånd.", "Nasogastrisk sond.", "Intravenöst näringstillskott."], correct:1},
+  {num:37, text:"En 37-årig kvinna har kommit på egenremiss till den specialiserade ätstörningsmottagning där du arbetar som underläkare. Hon berättar att hon har gått ner ca 1,5 kg/vecka senaste fyra veckorna. I status noterar du vikt 37 kg, längd 169 cm, BMI 13 kg/m². Blåmarmorerade, kalla händer. Puls 38/min liggande, 70 efter uppresning. BT liggande 90/60, efter uppresning 80/55. Hur bör du agera?", options:["Du informerar patienten om att hennes vikt är låg och ni kommer därför att erbjuda henne dagsjukvård, måndag till fredag i 12 veckor.", "Du informerar patienten om att hennes vikt är något låg och att ni nu måste följa vikten i öppenvård varje vecka.", "Du och patienten kommer tillsammans överens om att hon nu måste vända i vikt och du skriver en remiss till dietist.", "Du informerar patienten om att tillståndet är allvarligt och att hon omedelbart behöver vård inom heldygnsvård."], correct:2},
+  {num:38, text:"En 35-årig sångerska söker vård för heshet som har pågått i flera månader. Hon beskriver att rösten ofta blir ansträngd och att symtomen förvärras efter långa perioder av röstbelastning. Vid laryngoskopi ser du bilaterala, symmetriskt belägna små knutor på stämbanden. Vilken behandling är mest lämplig i detta fall? Välj det bästa alternativet.", options:["Behandling mot gastroesofagal reflux.", "Fonokirurgi (borttagning av knutorna).", "Total röstvila följd av gradvis ökande användning av rösten.", "Röstterapi hos logoped.", "Steroidinjektioner i stämbandsknutorna."], correct:4},
+  {num:39, text:"En 35-årig man söker vård för plötslig debut av heshet som har pågått i två dagar. Han är uppenbart förkyld, har lite hosta, slem i halsen, lätt halsont och lätt feber men inga svårigheter att svälja. Han är försäljare och använder sin röst intensivt dagligen. Akut laryngit är ett vanligt tillstånd som ofta orsakas av viral infektion. Du är distriktsläkare, vad är mest lämpligt att börja med?", options:["Ordinera ett par dagars röstvila.", "Ordinera en veckas behandling med β-2-receptorstimulerare.", "Ordinera slemlösande (acetylcystein).", "Ordinera två veckors behandling med inhalationssteroid.", "Ordinera Tetracyklin."], correct:1},
+  {num:40, text:"En 45-årig kvinna upplevde plötslig hörselnedsättning på vänster öra. Hörselnedsättningen kom utan föregående trauma eller infektion och hon upplevde varken smärta eller yrsel. Hon sökte på sin vårdcentral tre dagar senare eftersom symtomen inte förbättrades. Örat och trumhinnan såg normala ut, men hörselprovet visade en hörselnedsättning på vänster sida. Hon fick av lite oklar anledning ingen behandling på vårdcentralen. Du träffar henne på ÖNH-mottagningen en månad senare efter att hon skrivit en egenremiss. Audiometri visar att hörseln har förbättrats något men det är fortfarande en signifikant skillnad mellan öronen som besvärar henne. Vilken handläggning är nu mest lämplig?", options:["Subakut kirurgisk avlastning av n. vestibulocochlearis.", "Behandling med perorala steroider då hon har en inflammation på hörselnerven.", "Hjärnstamsaudiometri för att utesluta vestibularisschwannom.", "MR- undersökning för att utesluta vestibularisschwannom.", "Behandling med både perorala steroider och antivirala läkemedel då hon har en", "inflammation på hörselnerven som sannolikt orsakats av ett virus."], correct:4},
+  {num:41, text:"En medvetslös patient med bilateralt utvidgade och ljusstela pupiller bör misstänkas ha:", options:["Ponsblödning", "Hypoglykemi", "Epiduralhematom", "Hjärnstamsinklämning", "Subduralhematom"], correct:4},
+  {num:42, text:"Olle 28 år, ramlar ihop vid en föreläsning. Enligt vittne tog han sig plötsligt åt huvudet innan han ramlade ihop. Han kommer nu in till akutmottagningen medvetslös. Vid smärtstimulering sträcker han på armarna och benen roteras inåt. Vilken medvetandegrad enligt RLS-85-skalan har patienten?", options:["RLS 4", "RLS 6", "RLS 7", "RLS 5", "RLS 8"], correct:3},
+  {num:43, text:"Charcot-Marie-Tooth (CMT) drabbar vilka nerver?", options:["Sensoriska och motoriska nerver", "Autonoma nerver", "Motoriska nerver", "Sensoriska nerver"], correct:1},
+  {num:44, text:"För behandling av neuropatisk smärta vid t.ex. polyneuropati kan flertalet olika läkemedelstyper användas. Dessa delas in i första- och andrahandspreparat. Vilket är inte ett förstahandspreparat vid polyneuropatiorsakad neuropatisk smärta?", options:["Duloxetin", "Diazepam", "Gabapentin", "Tricykliska antidepressiva (TCA)", "Pregabalin"], correct:2},
+  {num:45, text:"Du lägger in en patient med misstänkt akut försämring i Myastenia Gravis och ska ordinera kontroller på avdelningen. Vilken monitorering är viktigast att ordinera för att kunna upptäcka akut försämring relaterad till sjukdomen?", options:["Pupillkontroller x flera/dag", "PEF-mätningar x flera/dag", "Kontinuerlig EKG-övervakning", "Arteriella blodgaser x flera/dag", "Kontinuerlig Pox- och pulsmätning"], correct:2},
+  {num:46, text:"Du arbetar på neurologmottagningen och har nyss fått beskedet att din patient har Dystrofia Myotonika som första kända fall i sin släkt. Övriga släktingar väljer att DNA-testas för sjukdomen. Hos de som visar sig ha sjukdomen, vilken är den härnäst viktigaste undersökningen?", options:["Endokrin blodprovtagning", "EKG", "Lumbalpunktion", "Gastro- och koloskopi", "EMG"], correct:2},
+  {num:47, text:"Vilket fynd förväntas inte finnas vid Wilsons sjukdom?", options:["Dystoni", "Tremor", "Lhermittes tecken", "Lågt ceruloplasmin i serum", "Kayser-Fleischer-ringar i kornea"], correct:3},
+  {num:48, text:"Vilken sjukdom är detta? Dominant autosomal ärftlighetsgång. Leder till degeneration av striato-pallidala neuron och striatala interneuron. Symtom i form av hyperkinesier och demens. Överlevnad efter diagnos ca 15-25 år. Ingen botande behandling finns men risperidon (Risperdal) kan minska motoriska symtom.", options:["Parkinsons sjukdom", "PSP – Progressiv supranukleär paralys", "NPH – normaltryckshydrocefalus", "Huntingtons sjukdom", "Dystrofia myotonica"], correct:4},
+  {num:49, text:"Vilken huvudvärksgenes åsyftas? Vanligare hos kvinnor än hos män, debutålder 50-60åå. Mycket intensiv ”elektrisk” unilateral smärta i ansiktet som håller i sig i sekunder-minut och återkommer ofta flera gånger per dygn.", options:["Huvudvärk vid hjärntumör", "Trigeminusneuralgi", "Migrän", "Klusterhuvudvärk"], correct:2},
+  {num:50, text:"Migränutlöst infarkt är ovanligt. I vilket kärlterritorium hamnar migräninfarkter oftast?", options:["A.cerebri anterior", "A.cerebri media", "A.carotis interna", "A.cerebelli inferior", "A.cerebri posterior"], correct:5},
+  {num:51, text:"Autonom dysreflexi kan uppstå vid ryggmärgsskador ovanför nivå?", options:["C7", "Th6", "C4", "Th10"], correct:2},
+  {num:52, text:"Vad är inte rätt gällande autonom dysreflexi?", options:["Förstahandsbehandling är Atropin.", "Kan ge symtom som huvudvärk och nästäppa.", "Hudrodnad och svettningar kan ses ovanför skadenivån.", "Kan utlösas av förstoppning."], correct:1},
+  {num:53, text:"En 32-årig man inkommer till akuten med ambulans på grund av förlamning i båda benen. Han har under en vecka upplevt tilltagande trötthetskänsla i benen samt lättare domningar i fötterna. Vilket par av differentialdiagnoser är de två mest sannolika? (ange ett alternativ)", options:["Lustgasintoxikation eller medicinbiverkningar", "Transversell myelit eller AIDP", "Spinal stenos eller funktionellt tillstånd", "Myastenia gravis eller spinal ischemi"], correct:2},
+  {num:54, text:"Urakut intensiv huvudvärk som kan ha debuterat i anslutning till kroppsansträngning, hosta, krystning eller sexuell aktivitet. Patienten har nackstyvhet, ljuskänslighet och/eller illamående. Vad bör du utesluta i första hand?", options:["Ischemisk stroke", "Hortons huvudvärk", "Sinustrombos", "Subarachnoidalblödning"], correct:4},
+  {num:55, text:"Vilken är den huvudsakliga neurotransmittorn i det perifera nervsystemets motoriska synapser på muskler?", options:["Acetylkolin", "Dopamin", "GABA", "Glutamat", "Serotonin"], correct:1},
+  {num:56, text:"En patient har plötsligt insjuknat med kraftig huvudvärk, ptos och oculomotorisk pares. CT- angiografi visar ett aneurysm vid bifurkationen av A. communicans posterior. Vilken mekanism förklarar bäst symptomen?", options:["Utflödesobstruktion från sinus sagittalis superior", "Vertebralisdissektion med ischemisk stroke", "Blödning i subaraknoidala rummet", "Kompression av N. oculomotorius", "Intrakraniell hypertension"], correct:4},
+  {num:57, text:"Vilket fynd vid MR-undersökning av hjärnan är mest typiskt för meningiom?", options:["Homogen kontrastuppladdning i bred kontakt med dura", "Periventrikulär utbredning med liten kontrastuppladdning", "Diffus utbredning längs med hjärnbarken", "Centralt nekrotiskt område med ringformad kontrastuppladdning", "Låg signal på T2 och ingen kontrastuppladdning"], correct:1},
+  {num:58, text:"Vilket fynd/symptom talar mest för akustikusneurinom?", options:["Vertikal nystagmus", "Tinnitus och ensidig hörselnedsättning", "Snabbt insättande huvudvärk", "Homonym hemianopsi"], correct:2},
+  {num:59, text:"En patient behöver genomgå en utredning av hjärnans kärl på grund av klinisk misstanke om intrakraniellt aneurysm. Som kliniker överväger du att skicka en remiss för angiografi och väljer mellan konventionell (DSA), datortomografisk (DTA) eller magnetresonansteknik (MRA). Vilket alternativ stämmer bäst?", options:["MRA visar dynamiska förhållanden i ett eventuellt aneurysm.", "Vid MRA kan behandling utföras samtidigt.", "MRA kan utföras utan kontrastmedel.", "MRA har högre bildupplösning.", "MRA kan bättre prediktera risken för aneurysmruptur."], correct:3},
+  {num:60, text:"En patient med misstänkt myastenia gravis testas med edrofonium, vilket leder till övergående förbättring av ptosen. Vilken verkningsmekanism förklarar effekten?", options:["Kaliumkanalblockad", "Nikotinreceptorblockad", "Antikroppsneutralisation", "Acetylkolinesterashämning", "Muskarinreceptorstimulering"], correct:4},
+  {num:61, text:"En patient har genomgått akut DT hjärna utan intravenös kontrast som inte påvisade något patologiskt. Till vilken radiologisk undersökning remitterar du patienten för att säkert utesluta färsk infarkt?", options:["DT hjärna + DT-angiografi.", "MR hjärna inklusive susceptibilitetsviktad sekvens.", "MR hjärna utan och med intravenös kontrast.", "MR hjärna inklusive diffusionsviktad sekvens.", "DT hjärna med intravenös kontrast."], correct:4},
+  {num:62, text:"Ester, en 51-årig kvinna med alkoholbrukssyndrom, har förts till akutmottagningen där du är medicinjour. Ester är stabil i vitalparametrar, vaken, men desorienterad. I alkometern har hon blåst 0,5 promille. Blodprover vid ankomst är invändningsfria förutom gränsvärde för p-glukos på 4,0 mmol/L. Vid undersökning finner du vertikal nystagmus som förvärras vid blick uppåt samt svårigheter få ut blicken åt sidorna. Vilken åtgärd bör ske först?", options:["Injektion 30% glukos iv", "Injektion vitamin B1 iv", "Injektion diazepam iv", "Lumbalpunktion", "DT hjärna"], correct:2},
+  {num:63, text:"Ali, en 61-årig man, uppsöker akutmottagningen där du är jour. Han har sedan en vecka tillbaka fått allt svårare att gå och upplever idag svaghet i händer och armar. Ali kan inte gå utan stöd och du noterar i din undersökning en markant svaghet mest uttalat distalt i nedre extremiteter. Därtill föreligger nedsatt kraft vid handkramning. Känsel för vibration och stick är nedsatt i fötter och fingrar. Biceps-reflexerna är svaga men liksidiga, övriga reflexer får du inte fram och Babinskis tecken saknas bilateralt. Vilken diagnos är mest sannolik?", options:["Multipel skleros", "Myastenia gravis", "Motorneuronsjukdom", "Polymyosit", "Akut inflammatorisk demyeliniserande polyneuropati"], correct:5},
+  {num:64, text:"Vilket påstående stämmer sämst för vilotremor vid idiopatisk parkinsons sjukdom?", options:["Tremorns frekvens är ganska låg, cirka 4-7Hz.", "Den debuterar ungefär samtidigt i båda händer.", "I övre extremitet ses den ofta först i tumme/pekfinger.", "Den accentueras av avledande manövrar såsom huvudräkning.", "Den reduceras eller försvinner under viljemässig rörelse av extremiteten."], correct:2},
+  {num:65, text:"Åke, 80 år, har parkinsons sjukdom sedan många år och behandlas med Madopark 200mg x 5 samt Sifrol 0,52 1x1 i apodos. Han ramlar i hemmet och ådrar sig en höftfraktur och läggs in på ortopeden för operation. Jourhavande ortoped glömmer att lägga in patientens läkemedel och han har därför endast fått alvedon på avdelningen. Dagen efter blir du som jour tillkallad till avdelningen då patienten först blivit agiterad, sedan blivit stel i kroppen, fått hög feber samt nu börjat bli medvetandesänkt. Vilket tillstånd har patienten mest sannolikt drabbats av?", options:["Katatoni", "Akinetisk kris", "Obstruktiv hydrocefalus", "Akatisi", "Fokalt status epileptikus"], correct:2},
+  {num:66, text:"DBS (deep brain stimulation) har flera godkända indikationer i EU och USA. För vilken sjukdom är DBS inte ett etablerat behandlingsalternativ?", options:["Ärftlig ataxi", "Parkinsons sjukdom", "Epilepsi", "Cervikal dystoni", "Essentiell tremor"], correct:1},
+  {num:67, text:"Vilket parkinsonläkemedel kan man använda om patienter inte alls kan svälja?", options:["Dopaminagonisten rotigotin", "COMT-hämmaren entakapon", "NMDA-receptorantagonisten amantadin", "MAO-B hämmaren rasagilin", "Dopaminprekursorn levodopa"], correct:1},
+  {num:68, text:"Jakob, 40 år, söker vårdcentralen på grund av skakningar i händerna. Han är tidigare helt frisk och tar inga mediciner. Han håller föredrag i jobbet och då är skakningarna socialt besvärande för honom, men annars hindrar de honom inte. Alkohol minskar besvären. I status finner du en finvågig postural tremor. Thyroideaprover och elstatus normalt. Vilken behandling är rimlig att erbjuda om patienten vill ha behandling?", options:["Karbamazepin vid behov", "Levodopa + benserazid vid behov", "Propranolol vid behov", "Pramipexol vid behov", "Diazepam vid behov"], correct:3},
+  {num:69, text:"Vilket läkemedel är minst lämpligt att behandla epilepsi med om patienten är en fertil kvinna med planer på graviditet under kommande år?", options:["Levetiracetam", "Topiramat", "Oxkarbazepin", "Lamotrigin"], correct:2},
+  {num:70, text:"En 55-årig taxichaufför som haft, vad du bedömer som, ett första oprovocerat generaliserat krampanfall. Du sätter inte in några läkemedel då det var första anfallet. Du bedömer patienten som trovärdig och att han lovar att följa de råd du ger honom. Vad ger du för information gällande bilkörning?", options:["Du anmäler till Transportstyrelsen, patienten får ej köra taxi på 5 år (förutsatt att han ej får något nytt anfall).", "Du anmäler till Transportstyrelsen, patienten får ej köra taxi på 10 år (förutsatt att han ej får något nytt anfall).", "Du kommer överens med patienten om att han inte får köra taxi på 6 månader (förutsatt att han ej får något nytt anfall).", "Du kommer överens med patienten om att han ej får köra taxi på 5 år (förutsatt att han ej får något nytt anfall)."], correct:1},
+  {num:71, text:"En patient får ett första epileptiskt anfall. Vid vilken omständighet räknas det som ett akutsymtomatiskt (d.v.s. provocerat) anfall?", options:["Patienten fick en stroke för 12 dagar sedan.", "Patienten hade feber vid anfallet.", "Patienten hade opioidabstinens vid anfallet.", "Patienten hade utsatts för långvarig exponering för blinkande ljus vid anfallet.", "Patienten hade benzodiazepinabstinens vid anfallet."], correct:5},
+  {num:72, text:"Vad är Rituximab?", options:["En monoklonal antikropp som hämmar lymfocyter att passera blod-hjärnbarriären.", "En monoklonal antikropp som binder till CD-20 på B-celler och orsakar lysering av dessa", "B-celler.", "En så kallad rekonstitutionsbehandling som ”startar om” immunsystemet.", "En antagonist på S1P-receptorer på lymfocyter och blockerar lymfocyternas förmåga att", "lämna lymfkörtlarna."], correct:2},
+  {num:73, text:"Vilket fynd vid lumbalpunktion vid akut inflammatorisk demyeliniserande polyneuropati (Guillain- Barré) ger bäst stöd för diagnosen?", options:["Stegrat csv-laktat och sänkt csv-glukos.", "Stegrade csv-lymfocyter men normala lymfocyttal i blodet.", "Förhöjt csv-protein och albumin-kvot.", "Stegrat csv-CXCL1.", "Stegrat csv-NFL."], correct:3},
+  {num:74, text:"En 47-årig man inkommer med ambulans efter att plötsligt ha insjuknat med vänstersidig hemipares och neglekt. Akut DT hjärna utan kontrast visar inget avvikande. Det framkommer även att han haft smärta på höger sida av ansiktet/huvudet sedan en vecka tillbaka. Vid undersökning noterar du hemipares vänster som påverkar nedre delen av ansiktet, arm och ben, vänstersidigt neglekt samt ptos och mios höger öga. Vilken är den mest sannolika bakomliggande orsaken till patientens misstänkta stroke?", options:["Cerebral vaskulit.", "Förmaksflimmer", "Sinusventrombos", "Dissektion i karotis.", "Paradoxal embolisering via öppetstående foramen ovale."], correct:4},
+  {num:75, text:"Miguel född -59 inkommer med pågående yrsel med plötslig debut. Du gör HINTS och ser spontannystagmus där snabba fasen byter riktning när patienten tittar åt olika håll. Du får ingen inställelserörelse vid head-impulse-test. Vid Test of skew får du en vertikal inställelserörelse av det öga du nyss täckte för. Vilken är den mest troliga orsaken till patientens symtom?", options:["Ocklusion av a. cerebelli inferior posterior", "Benign positionell paroxysmal vertigo", "Ocklusion av a. cerebri media", "Labyrintinfarkt", "Vestibularisneurit"], correct:1},
+  {num:76, text:"En 75-årig kvinna med diabetes och hypertoni inkommer med ambulans på grund av plötsligt höger hemipares. Hon medicinerar med enalapril 10 mg x 1 och metformin 500 mg x 2. Vid ankomsten är hon RLS 1, cirkulatorisk stabil, blodtrycket är 168/96. Akut DT hjärna visar en liten färsk blödning i vänster hjärnhalvas basala ganglier utan masseffekt eller genombrott till ventriklarna. Vilken åtgärd är nu mest lämplig?", options:["Kontakta neurointerventionist för embolisering av blödningskälla.", "Kontakta neurokirurgen för ställningstagande till utrymning.", "Lägg in på strokeenhet och sätt ut metformin.", "Ge protrombinkomplex intravenöst.", "Sänk blodtrycket med intravenöst läkemedel till systoliskt tryck <140."], correct:5},
+  {num:77, text:"Vid undersökning av en 35-årig kvinna, som för några dagar sedan var med om en olycka där hon ramlade av hästen och landade på pannan i dorsalflexion, finner du att hon har nedsatt kraft och känsel för beröring och stick i båda armarna, men relativt god kraft och beröringskänsel i benen. Vad är den mest sannolika topiska diagnosen?", options:["Skada på anteriora delar av cervikal ryggmärg.", "Skada i cervikalplexus.", "Skada på centrala delar av cervikal ryggmärg.", "Frontalt subduralhematom.", "Vertebralisdissektion"], correct:3},
+  {num:78, text:"En 35-årig man med MS utvecklar bilateral svaghet i benen, nedsatt känsel från naveln och nedåt, samt inkontinens. Reflexerna är livliga, Babinski positiv bilateralt. I vilken nivå av ryggmärgen finner man mest sannolikt aktuell demyelinisering?", options:["S1-S2", "L1-L2", "Medulla oblongata", "T10-T12", "C7-T1"], correct:4},
+  {num:79, text:"En 65-årig man söker för plötslig svaghet i höger arm och ben samt afasi. Neurologisk undersökning visar central facialispares på höger sida och motorisk afasi. MR visar en ischemisk infarkt i vänster hemisfär. Vilken artär är mest sannolikt påverkad?", options:["A. cerebri media", "A. basilaris", "A. cerebri posterior", "A. vertebralis", "A. cerebri anterior"], correct:1},
+  {num:80, text:"Ranjan, 19 år, har många symtom som tyder på narkolepsi. Vilket symtom är inte typiskt för denna diagnos?", options:["Förlamningskänsla vid uppvaknande.", "Skrämmande hallucinationer vid insomning.", "Huvudvärk vid uppvaknande.", "Insomningsbenägenhet i enformiga situationer.", "Plötslig bensvaghet vid skratt och gråt."], correct:3},
+  {num:81, text:"Vilken patient är minst lämplig för behandling med bupropion?", options:["En 41-årig man med depression, ångest och svårigheter att somna.", "En 33-årig kvinna med depression och inslag av initiativlöshet, men ingen", "ångestproblematik.", "En 48-årig kvinna med tidigare SSRI-behandlad depression, söker nu för depression med", "trötthet som dominerande symptom.", "En 27-årig man med depression, tidigare viktuppgång och som upplever sexuella", "biverkningar av sertralin."], correct:1},
+  {num:82, text:"En 47-årig kvinna med bipolär sjukdom behandlas sedan flera år med litium. Hon söker nu vårdcentralen för lumbago och ber om smärtlindring. Du vill ordinera ett analgetikum. Vilket läkemedel är mest lämpligt att förskriva?", options:["Naproxen", "Paracetamol", "Ibuprofen", "Diklofenak"], correct:2},
+  {num:83, text:"En person som är häktad har rätt till sjukvård…", options:["i den mån den kan erbjudas i häktet och med bibehållen förundersökningssekretess.", "i lägen där vård inte kan anstå.", "som alla medborgare.", "om åklagaren givit sitt medgivande till det."], correct:3},
+  {num:84, text:"Mikael, 42 år dömdes för fem år sedan för försök till mord. Utredningen gick relativt snabbt eftersom Mikael erkände sitt brott. I målet genomfördes en rättspsykiatrisk utredning som slog fast att Mikael begått gärningen under inflytande av en allvarlig psykisk störning (APS) i form av en psykos och att han vid undersökningen alltjämt uppvisade paranoida symtom samt hörselhallucinationer och befanns således lida av en APS. Därutöver var Mikael åsatt diagnoserna svårt amfetaminbrukssyndrom, medelsvårt cannabisbrukssyndrom och antisocialt personlighetssyndrom. Mikael överlämnades till rättspsykiatrisk vård med särskild utskrivningsprövning (SUP). Nu är det dags för en vårdprövning i förvaltningsrätten. Mikaels tillstånd har stabiliserats och det har kunnat slås fast att han inte lider av någon egentlig psykossjukdom utan att hans tidigare psykosinsjuknanden varit utlösta av droger. Han har i stunden ingen allvarlig psykisk störning och ingen pågående läkemedelsbehandling. Vilket av nedanstående är sant?", options:["Eftersom substans- och personlighetssyndrom är psykiska störningar (om än inte allvarliga) som medför risk för återfall i brottslighet av allvarligt slag måste denna risk hanteras innan utskrivning kan bli aktuell.", "Eftersom det visat sig att den allvarliga psykiska störningen varit orsakad av droger ska Mikael skickas till Kriminalvården för att avtjäna återstoden av sitt straff i fängelse.", "Eftersom Mikael inte längre lider av en allvarlig psykisk störning saknas grund för fortsatt tvångsvård och LRV-vården ska upphöra.", "Eftersom Mikael inte längre har behov av vård förenad med frihetsberövande och annat tvång ska vården upphöra."], correct:1},
+  {num:85, text:"En 42-årig man med flerårigt omfattande bruk av alkohol grips och häktas efter att i berusat tillstånd ha misshandlat en person allvarligt. Dag 2 i häktet blir han alltmer orolig, agiterad och plockig. Dag 3 visar han tecken på hallucinationer, är förvirrad, desorienterad och pulsen ligger på 120. Vilken vårdform är mest lämplig för denna patient baserat på hans tillstånd?", options:["Frivillig vård enligt HSL på rättspsykiatrisk vårdinrättning.", "Frivillig vård enligt HSL på allmänpsykiatrisk vårdinrättning.", "Tvångsvård enligt LRV (vårdintyg § 5).", "Tvångsvård enligt LPT (vårdintyg § 4)."], correct:3},
+  {num:86, text:"Vilken strategi är mest framgångsrik vid val av antipsykotiskt läkemedel?", options:["Att utifrån de olika preparatens biverkningsprofiler välja ett läkemedel som patienten tolererar.", "Att noga överväga vilken kombination av läkemedel som har störst chans att täcka patientens symtomprofil men samtidigt minimera biverkningar.", "Att välja det preparat som har mildast biverkningar eftersom patienten kan behöva livslång behandling.", "Att noga värdera vilken kombination av symtom patienten uppvisar för att kunna välja ett läkemedel med lämplig symtomlindrande profil."], correct:1},
+  {num:87, text:"En del droger kan ge upphov till psykotiska symptom. Om en patient har kvarvarande psykotiska symptom även efter att drogen gått ur kroppen, kan det tyda på underliggande sårbarhet. Vilken drog är starkast associerad med schizofreniutveckling?", options:["Cannabis", "Amfetamin", "Alkohol", "Opioider"], correct:1},
+  {num:88, text:"Du har träffat en patient med schizofreni och ska dokumentera psykiskt status. Vilket av följande räknas till negativa symtom?", options:["Vanföreställningar", "Ambivalens", "Desorganiserat beteende", "Rösthallucinationer"], correct:2},
+  {num:89,
+  text:"Mattias har en känd schizoaffektiv sjukdom och har upprepade gånger insjuknat i psykotiska manier. Polis larmas då Mattias har börjat kasta ut föremål från sin lägenhet och skriker hotelser mot omgivningen. Polisen uppfattar att Mattias troligen lider av en allvarlig psykisk störning och att han utgör en fara, både för sig själv och sin omgivning. De omhändertar honom enligt LPT 47 § och kör honom till psykiatriska akutmottagningen. Mattias är till en början lugn och poliserna åker i väg. Tio minuter senare blir han plötsligt agiterad och hotfull. Vilka fysiska tvångsingripanden får då utföras av vårdpersonal utan att några ytterligare juridiska beslut eller åtgärder vidtagits?",
+  options:["Eftersom Mattias redan är omhändertagen enligt LPT kan fastspänning eller avskiljning vid behov omedelbart ordineras av läkare.", "Sjuksköterskan kan ge tvångsinjektion efter kontakt med chefsöverläkaren alternativt specialistläkare med delegation från chefsöverläkaren.", "Vårdpersonal får använda de tvångsingripanden som nöden kräver för att skydda liv, hälsa eller egendom.", "Inga tvångsingripanden får genomföras, då Mattias inte är intagen enligt LPT."], correct:3},
+  {num:90, text:"Vilket av följande ingår i alkoholabstinenssyndrom?", options:["Promille under 1", "Sluddrigt tal", "Leverpåverkan", "Puls över 100"], correct:4},
+  {num:91, text:"På vilken av följande faktorer grundar du ett beslut om inläggning hos en patient som har abstinens från alkohol?", options:["Tidigare krampanfall", "Alkoholbrukssyndrom diagnos", "Leverpåverkan", "Blodalkoholkoncentrationsnivå (promille)"], correct:1},
+  {num:92, text:"Är läkare skyldiga att göra en anmälan enligt 6 § LVM om man bedömer att patienten uppfyller kriterierna för vård enligt LVM?", options:["Ja, alltid.", "Ja, men bara om patienten vårdas frivilligt (enligt HSL).", "Ja, men det gäller bara legitimerade läkare.", "Nej, men man har möjlighet."], correct:1},
+  {num:93, text:"Gisela har bipolär sjukdom typ I. Hennes make har nu, trots visst motstånd, lyckats få med henne till psykiatrisk akutmottagning då hon knappt sovit på en vecka, har börjat städa i varenda garderob och köpt kläder på internet för tusentals kronor. Hon har slutat ta sina läkemedel, då hon ”varken är eller har varit bipolär utan endast hennes obegåvade läkare vid öppenvården som tycker det”. Vid samtal är Gisela påtagligt euforisk och har vidlyftiga associationer samt är irriterad och nedsättande gentemot sin make men väldigt trevlig mot dig. Hon tillstår att hon slutat ta läkemedel, men byter snabbt samtalsämne. Du bedömer att Gisela är manisk och behöver behandling omedelbart för att förhindra att hon raserar sitt privatliv och sin ekonomi. Du frågar om hon vill bli inlagd på sjukhus. Hon accepterar omedelbart med hänvisning till att hon då slipper sin jobbige make och dessutom kan städa på avdelningen och även muntra upp de andra patienterna. Vad gör du och varför?", options:["Med tanke på att Gisela är samarbetsvillig på akuten är det inte nödvändigt med heldygnsvård. Jag ordinerar henne att återuppta sin medicinering och ordnar med akut uppföljning i ordinarie psykiatrisk öppenvård.", "Jag utfärdar vårdintyg, fattar kvarhållningsbeslut och lägger in patienten. Sannolikheten är stor att Gisela kommer ändra inställning till heldygnsvård inom kort. Hon uppfyller också övriga kriterier för vård enligt LPT.", "Jag lägger in Gisela för frivillig vård. Jag är långt ifrån säker på att det kommer fungera, men tvångsvård är ej möjlig då patienten samtycker till erbjuden vård.", "För att bevara patientens förtroende för vården och inte använda mer tvång än nödvändigt, lägger jag in Gisela på frivillig basis. Om hon skulle vilja skriva ut sig får man göra en bedömning av om vården kan konverteras till tvångsvård. Det är mycket troligt att Gisela skulle uppfylla kriterier för konvertering till tvångsvård."], correct:2},
+  {num:94, text:"Opioidberoende är förknippat med cirka 10 gånger förhöjd mortalitet. Detta beror på flera orsaker. Vad är främsta orsak till den förhöjda mortaliteten?", options:["Kardiovaskulära sjukdomar", "Infektionssjukdomar", "Suicid", "Överdoser"], correct:4},
+  {num:95, text:"Heroin ger en initial intensiv berusning i några minuter, följt av en stillsam eufori under cirka 30 minuter och sen några timmars balanserat välmående. Därefter tilltar abstinensen. Vad är typiska symtom på opioidabstinens?", options:["Värk, amnesi, epileptiska kramper", "Förkylningssymtom, värk, diarré", "Förvirring, rösthallucinos, diarré", "Mios, förkylningssymtom, rösthallucinos"], correct:2},
+  {num:96, text:"På en psykiatrisk akutmottagning behöver patienter prioriteras. Det osannolika scenariot är att alla nedanstående patienter ankommer till akuten nästan samtidigt. Du är legitimerad och enda läkare i tjänst på akuten. Vilken patient skulle du välja att påbörja handläggning av (ej nödvändigtvis slutföra) först?", options:["Nils som inkommit ofrivilligt med polis efter ett bråk på arbetsplatsen. Insisterar på att få lämna akuten snarast.", "Mikael som efterfrågar något mer ”att sova på” p.g.a. ökad ångest sista veckan. Han börjar bli desperat och har kontaktat sin öppenvårdsmottagning men inte fått svar sedan igår.", "Annika, med heroinberoende och antisocialt personlighetssyndrom. Tidigare hot- och våldsbeteende vid negativa besked. Meddelar ganska lugnt och samlat att hon behöver recept på Xanor då hon tappat bort sin Apodosrulle som delas varje vecka från beroendemottagning.", "Camilla, med känt alkoholberoende och kronisk ischemisk hjärtsjukdom inkommer med ambulans, kallsvettig, temp 38.9, puls 140, blodtryck 180/110, kraftigt tremorös, desorienterad och ser småkryp i taket.", "Fatima, som har en känd schizofreni med akut försämring senaste tiden. Vårdintyg utfärdades vid hembesök av hennes öppenvårdsläkare för fyra dagar sen. Då avvek patienten. Inkommer nu under sansade förhållanden med polis. Vårdintyget blir ogiltigt om 30 minuter."], correct:4},
+  {num:97, text:"Du har vid vårdcentralen träffat en patient där du kl. 09:00 den 1 juni utfärdar ett vårdintyg. Samtidigt skickar du en handräckningsbegäran till polisen, eftersom patienten redan lämnat vårdcentralen. Två dagar senare, den 3 juni kl. 11:30 inkommer patienten tillsammans med polis till psykiatriska akutmottagningen. Kvarhållningsbeslut journalförs en halvtimme senare kl. 12:00 och patienten läggs in vid avdelning kl. 12:40. Vid vilken tidpunkt måste intagningsbeslutet senast fattas?", options:["Den 4 juni kl. 11:30", "Den 3 juni kl. 24:00", "Den 5 juni kl. 09:00", "Den 4 juni kl. 12:00", "Den 4 juni kl. 12:40"], correct:1},
+  {num:98, text:"En 62-årig kvinna söker tillsammans med sin make på grund av tilltagande minnesproblem. Hon har ett välbehandlat blodtryck och diabetes typ 2. Hon har inga problem att kommunicera språkligt och kan redogöra för sina problem. Hon kör bil utan anmärkning och har inga svårigheter att hitta när hon kör eller promenerar. Sköter sina vardagliga sysslor ungefär som tidigare och har koll på sitt blodsocker och sina mediciner i en dosett. Maken upplever att hustrun har fått tilltagande närminnesproblem senaste året och upprepar ofta information. MMSE (Mini Mental State Examination) visar 28/30 poäng med avdrag för -2 för fördröjd återgivning. Du arbetar vid vårdcentralen. Vad gör du nu?", options:["Enklare kognitiva tester, blodprov och en avbildning av hjärnan.", "Lumbalpunktion för att mäta Alzheimerbiomarkörer.", "Avbildning av hjärnan med tau- PET.", "Sjukskrivning för depression.", "Vidareutredning för utmattningssyndrom samt SSRI behandling."], correct:1},
+  {num:99, text:"En 63-årig man kommer, tillsammans med sin dotter, på återbesök till minnesmottagningen för sin kognitiva försämring som pågått i cirka två år. Dottern säger att pappan haft svårt att hantera sina bankkonton och ofta varit förvirrad. Han har några 'bra dagar' när han sköter hushållet och några 'dåliga dagar' då han är förvirrad och behöver hjälp. Han sover mycket på dagarna och har utvecklat livliga mardrömmar. Hans hustru gick bort för tre år sedan i en hjärtinfarkt, och under de senaste månaderna har dottern upptäckt att han ibland pratar med hustrun som om hon var i rummet. För cirka sex månader sedan började han få en mild vilotremor i höger hand. Sedan dess har hans rörelser saktats ner och han tappar ofta balansen. Ortostas ses inte. Vid din fysiska undersökning har patienten rigiditet, och en vilotremor noteras i höger hand. Patienten går långsamt med små steg. Vilken är den mest sannolika diagnosen?", options:["Depression med visuella hallucinationer.", "Kognitiv sjukdom av Lewy body typ.", "Konfusion med visuella hallucinationer.", "Kognitiv sjukdom av Parkinson typ.", "Vanföreställningssyndrom med visuella hallucinationer."], correct:2},
+  {num:100, text:"På minnesmottagningen träffar du en 65-årig man som genomgått en lumbalpunktion på grund av närminnesproblem senaste året. Minnesproblematiken har lett till att han inte kan arbeta längre. Ni har gjort en lumbalpunktion och resultaten visar följande: Aβ42: 625 ng/L (referens> 620 ng/L) Aβ42/Aβ40: 0,038 (referens> 0,072) Fosfo-tau (P-tau): 55 ng/L (referens <50 ng/L) Neurofilament: 1280 ng/L (referens <1314 ng/L) Hur bedömer du likvorsvaret?", options:["Normalt neurofilament utesluter kognitiv sjukdom.", "Svaret är bäst förenligt med en vaskulär demens.", "Svaret är mest förenligt med en frontotemporal demenssjukdom.", "Normalt Aβ42 utesluter Alzheimer sjukdom.", "Tydligt sänkt Aβ42/40 och förhöjd fosfotau (P-tau) talar för Alzheimers sjukdom."], correct:5},
+  {num:101, text:"På vårdcentralen träffar du en 28-årig man med nyligen diagnostiserad ADHD, där ADHD- utredningen gjordes när han avtjänade fängelsepåföljd för mordbrand. Patienten är pratsam och kommer in på de ”hyss” som han ägnade sig åt under barn- och tonåren. Han ger målande beskrivningar av hur han ofta startade slagsmål, tyckte om att sätta eld på torrt gräs, började skolka redan i 11-årsåldern och var ”skicklig” på att snatta bland annat sportkläder. Vad kallas denna typ av samsjuklighet hos barn och ungdomar med ADHD?", options:["Vandel", "Antisocialt personlighetssyndrom", "Uppförandestörning", "Trotssyndrom"], correct:3},
+  {num:103, text:"Suicidtal brukar mätas i antal suicid per 100 000 personer under ett år. 2021 uppskattades det globala suicidtalet till 9. Vad har Sveriges suicidtal varit de senaste åren (om man bara räknar ”säkra” suicid)?", options:["6", "19", "12", "26"], correct:3},
+  {num:104, text:"I psykologiska obduktionsstudier granskar man journaler och intervjuar personer som haft kontakt med en person som senare tagit sitt liv. Vilket av följande förekommer i mer än hälften av fallen i dessa studier?", options:["Skilsmässa", "Alkoholproblem", "Barndomstrauma", "Depression"], correct:4},
+  {num:105, text:"Vad är sant avseende suicidtankar och suicid?", options:["Det är viktigt att veta vilken typ av suicidtankar en patient har, är det passiva suicidtankar är suicidrisken ofta låg, är det aktiva tankar är suicidrisken hög.", "Personer som blivit bedömda av sjukvården tiden före att de tagit sitt liv har oftast bejakat suicidtankar vid bedömningstillfället.", "Personer som uttrycker suicidtankar har en något högre risk att ta sitt liv jämfört med personer som förnekar suicidtankar. Suicidtankar tillhör dock ej de starkaste riskfaktorerna för suicid.", "De flesta patienter som bejakar suicidtankar använder dessa på ett instrumentellt sätt, alltså för att få det de vill, t.ex. bli inlagda eller för att få en viss medicin."], correct:3},
+  {num:106, text:"Vad är sant om suicidriskbedömning?", options:["Suicidriskbedömningar bör endast utföras av specialistläkare i psykiatri.", "En korrekt utförd suicidriskbedömning kan på ett tillförlitligt sätt förutsäga vilken patient som kommer ta sitt liv om inte adekvata insatser sätts in.", "Suicidriskbedömningar har lågt prediktivt värde.", "Att prata om suicidtankar med en person som mår dåligt riskerar att starta en suicidal process."], correct:3},
+  {num:107,
+  text:"Du är läkare vid en psykiatrimottagning och träffar Gabriel 35 år som tillfälligt bor vid ett akutboende för hemlösa. Gabriel frigavs för en vecka sedan efter ett längre fängelsestraff och har ingen medicin eller kontakt med sjukvård. Han har ADHD, hör av och till röster, dricker ibland alkohol och har testat narkotika, vilket han upplever minskar rösterna. Gabriel har alltid ”bollats runt” i psykiatrin och har inte haft någon varaktig vårdkontakt. Hans socialsekreterare påtalar risken att Gabriel inte ska orka hålla sig drogfri. Gabriel vill ha hjälp och beskriver att han har ångest, röstupplevelser, känner sig rädd och ensam. Han önskar sömn- och ADHD- medicin av dig. Vad är nu viktigaste att tänka på när det gäller vård och stöd för Gabriel?",
+  options:["Att Gabriel uppvisar drogfrihet med prover innan han etablerar vårdkontakt.", "Att se till att insatserna kring Gabriel först utreds noggrant av socialtjänst innan etablering av vårdkontakt.", "Att Gabriel först remitteras till en psykosklinik för medicinering mot röstupplevelserna.", "Att se till att insatserna kring Gabriel snabbt samordnas mellan olika myndigheter (socialtjänst, sjukvård med flera)."], correct:4},
+  {num:108, text:"Vad är karakteristiskt för emotionellt instabil personlighetsstörning (EIPS)?", options:["Identitetsstörning", "Interpersonellt våld", "Icke-respons på behandling", "Oanställningsbarhet"], correct:1},
+  {num:109, text:"Du arbetar som underläkare vid psykiatrisk avdelning när du blir hämtad av sjuksköterskan. Det visar sig att en patient blivit stående som en staty i sitt rum och svarar inte på tilltal. Vad misstänker du att patienten lider av?", options:["Katatoni", "Akatisi", "Tardiv dyskinesi", "Akut dystoni"], correct:1},
+  {num:110, text:"Vad stämmer bäst gällande akut stressreaktion?", options:["De första symtomen kan debutera lång tid efter den traumatiska händelsen.", "Diagnosen kan ställas först efter att patienten haft symtom mer än sex veckor.", "I det akuta skedet krävs sällan farmakologisk behandling.", "Patienten bör snabbt ordineras SSRI för att minska symtomen på stress."], correct:3},
+  {num:111, text:"Du träffar vid psykiatriakuten Leif som insjuknat i ett psykotiskt skov. Han beskriver bland annat att han noterat att grannen ofta ställer ut en röd påse utanför dörren, detta i syfte att varna Leif om att polisen är ute efter honom. Vad stämmer bäst för att beskriva ovanstående symtom i ett psykiskt status?", options:["Hallucinationer", "Hänsyftningsidéer", "Desorganisering", "Negativa symtom"], correct:2},
+  {num:112, text:"En 62-årig man söker vid psykiatriska akutmottagningen på grund av återkommande ångestbesvär. Den senaste månaden har han upprepade gånger drabbats av skakningar, svettningar, andnöd och bultande hjärta. Besvären har kommit när han ska gå till torget där han för ett halvår sedan blev utsatt för ett väpnat rånförsök. Han vill helst inte prata mer om det och börjar svettas när läkaren ställer frågor om händelsen. Vilken är den troligaste diagnosen?", options:["Paniksyndrom", "Generaliserat ångestsyndrom", "Social ångest", "Posttraumatiskt stressyndrom"], correct:4},
+  {num:113, text:"Vilken störning brukar inte betraktas som ett tvångssyndromrelaterat tillstånd?", options:["Agorafobi", "Samlarsjuka (hoarding)", "Trichotillomani", "Dysmorfofobi"], correct:1},
+  {num:114, text:"Du träffar vid vårdcentralen en 31-årig man som söker då han inte kunnat sova på grund av ångest och oro. Han beskriver stor oro för sin sambo som varit trött under några veckor men inte sökt vård. Vid närmare anamnestagning visar det sig att patienten sedan tonåren ofta oroar sig över olika saker. Vilken diagnos är mest sannolik?", options:["Separationsångest", "Tvångssyndrom", "Generaliserat ångestsyndrom", "Social fobi"], correct:3},
+  {num:115, text:"Opioider kan användas för behandling av nociceptiva långvariga smärttillstånd. Vilket alternativ stämmer bäst?", options:["Opioidbehandling är effektivt vid långvarig nociceptiv smärta, dosen bör ökas tills patient anger smärtintensitet NRS <3.", "Opioidbehandling under längre tid bör ses som en undantagsbehandling för ett fåtal patienter med långvarig nociceptiv smärta.", "Opioidbehandling vid långvarig nociceptiv smärta bör pågå under minst tre månader för att kunna utvärdera behandlingseffekten.", "Opioidbehandling vid långvarig nociceptiv smärta ska enbart utföras vid Smärtenhet."], correct:2},
+  {num:116, text:"Vilket läkemedel är mest angeläget att sänka/sätta ut på morgonen inför ECT?", options:["Diazepam", "Mirtazepin", "Sertralin", "Litium"], correct:1},
+  {num:117, text:"Vad stämmer bäst avseende utmattningssyndrom?", options:["Det är vanligtvis en del av efterförloppet till depression.", "Det är ofta kopplat till erfarenhet av en extrem situation som återupplevs.", "Det är vanligt med nedsatt förmåga till planering och uppmärksamhet.", "Det är vanligt med misstänksamhet och vanföreställningar om den egna arbetsplatsen."], correct:3},
+  {num:118, text:"Vad är mest kännetecknande för social ångest?", options:["Nedsatt funktionsnivå.", "Ångest inför vad andra tänker om en.", "Lättväckt misstänksamhet mot andra.", "Symtom sedan mer än ett halvår."], correct:2},
+  {num:119, text:"Vad är förstahandsbehandling vid långvarig smärta?", options:["Snabbverkande oxikodon", "Fysisk aktivitet", "Transkutan elektrisk nervstimulering", "Tricykliska antidepressiva"], correct:2},
+  {num:120, text:"Nguyen, en 45-årig kvinna från Vietnam, söker vård på psykiatriakuten för hjärtklappning, yrsel och domningar i armarna. Hon har genomgått flera somatiska utredningar utan att man hittat någon organisk orsak och på medicinkliniken föreslog någon kontakt med psykiatrin. Under samtalet berättar hon att hon känner sig 'tom inombords' och att ”hennes själ har förlorat sin plats'. Hon nämner att detta började efter att hennes make dog för två år sedan. Hon har svårt att sova och känner sig ofta trött. Hon har inte tidigare haft kontakt med psykiatrin. Vad gör du nu i första hand?",
+  options:["Förklarar på ett empatiskt sätt att hennes symtom är psykosomatiska och att hon bör fokusera på att tänka mer positivt.", "Utforskar hennes kulturella förståelse av symtomen och hur förlusten av maken påverkat hennes psykiska hälsa.", "Föreslår uppföljning vid psykosmottagning för utredning av kroppsliga vanföreställningar.", "Informerar henne om att hennes symtom är typiska för depression enligt DSM-5 och föreslå SSRI."], correct:2}
+];
+
+const userAnswers = {};  // q_num -> chosen option index (1-based)
+let answeredCount = 0;
+
+function renderQuestions() {
+  const container = document.getElementById('questions-container');
+  questions.forEach(q => {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.id = 'q-' + q.num;
+    
+    let imageHtml = '';
+    if (q.image) {
+      imageHtml = `<img src="${q.image}" alt="Question ${q.num} image" class="q-image">`;
+    }
+    
+    card.innerHTML = `
+      ${imageHtml}
+      <div class="q-header">
+        <div class="q-num">${q.num}</div>
+        <div class="q-text">${q.text}</div>
+      </div>
+      <div class="options" id="opts-${q.num}">
+        ${q.options.map((opt, i) => `
+          <button class="option" onclick="answer(${q.num}, ${i+1})" id="opt-${q.num}-${i+1}">
+            ${opt}
+          </button>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function answer(qNum, chosen) {
+  if (userAnswers[qNum] !== undefined) return; // already answered
+  userAnswers[qNum] = chosen;
+  answeredCount++;
+  
+  const q = questions.find(q => q.num === qNum);
+  const correct = q.correct;
+  
+  // Disable all options for this question
+  q.options.forEach((_, i) => {
+    const btn = document.getElementById(`opt-${qNum}-${i+1}`);
+    btn.classList.add('answered');
+    if (i + 1 === correct) {
+      btn.classList.add('correct');
+    } else if (i + 1 === chosen) {
+      btn.classList.add('wrong');
+    }
+  });
+  
+  updateScore();
+  
+  // Show finish button when all answered
+  if (answeredCount === questions.length) {
+    document.getElementById('finish-btn').style.display = 'block';
+  }
+}
+
+function updateScore() {
+  let correct = 0;
+  for (const [qNum, chosen] of Object.entries(userAnswers)) {
+    const q = questions.find(q => q.num === parseInt(qNum));
+    if (q && q.correct === chosen) correct++;
+  }
+  
+  const total = questions.length;
+  document.getElementById('score-display').textContent = `${correct} / ${total}`;
+  document.getElementById('progress-bar').style.width = (answeredCount / total * 100) + '%';
+}
+
+function showResults() {
+  let correct = 0;
+  const wrongOnes = [];
+  
+  for (const q of questions) {
+    const chosen = userAnswers[q.num];
+    if (chosen === q.correct) {
+      correct++;
+    } else if (chosen !== undefined) {
+      wrongOnes.push({num: q.num, text: q.text.substring(0, 60) + '...'});
+    }
+  }
+  
+  const total = questions.length;
+  
+  document.getElementById('final-score').textContent = `${correct}/${total}`;
+  document.getElementById('result-detail').textContent = 
+    `Du svarade rätt på ${correct} av ${total} frågor (${Math.round(correct/total*100)}%).`;
+  
+  const wrongList = document.getElementById('wrong-list');
+  if (wrongOnes.length > 0) {
+    wrongList.innerHTML = `<h3>Fel svar (${wrongOnes.length} st):</h3>` + 
+      wrongOnes.map(w => `<p>• Fråga ${w.num}: ${w.text}</p>`).join('');
+  } else {
+    wrongList.innerHTML = '<p>Perfekt! Inga fel svar.</p>';
+  }
+  
+  document.getElementById('results-panel').style.display = 'block';
+  document.getElementById('finish-btn').style.display = 'none';
+  document.getElementById('results-panel').scrollIntoView({behavior: 'smooth'});
+}
+
+renderQuestions();
+</script>
+</body>
+</html>
