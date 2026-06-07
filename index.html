@@ -10,6 +10,9 @@ F<!DOCTYPE html>
   
   header { background: #1d1d1f; color: #fff; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
   header h1 { font-size: 18px; font-weight: 600; }
+ .header-btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 999px; text-decoration: none; font-size: 14px; font-weight: 600; color: #fff; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); transition: background 0.2s, transform 0.15s; }
+ .header-btn:hover { background: rgba(255, 255, 255, 0.18); }
+ .header-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   #progress-bar-wrap { width: 200px; height: 6px; background: #444; border-radius: 3px; overflow: hidden; }
   #progress-bar { height: 100%; width: 0%; background: #34c759; transition: width 0.3s; }
   #score-display { font-size: 14px; color: #aaa; }
